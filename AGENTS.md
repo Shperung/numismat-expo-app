@@ -74,6 +74,8 @@
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
 в iOS Simulator через Expo Go. Додано Expo Router з bottom tabs (Головна / Список / Інфо),
 кожен таб — порожній екран з назвою. Розбір структури — по ходу.
+Підключено Firestore: колекція `coins` читається через провайдер і виводиться на Головній як JSON.
+Далі — тип `Coin` за реальними даними.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -82,6 +84,11 @@
   `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1 expo start` (симулятор); для телефону — `npm run start:tunnel`.
 - Expo Router: `main` = `expo-router/entry`, `scheme` в `app.json`, `index.ts`/`App.tsx` видалено.
   Роути у `src/app/`: `_layout.tsx` (`Tabs` + іконки Ionicons), `index.tsx`, `list.tsx`, `info.tsx`.
+- Firebase JS SDK (Firestore, спільний проєкт `tetiana-redko` з `psychology`): конфіг у `.env.local`
+ (`EXPO_PUBLIC_FIREBASE_*`), `src/lib/firebase.ts` (`db`), `src/lib/fetch-collection.ts` (`fetchCollection`),
+ `src/providers/coins-provider.tsx` (context + `useCoins`), на Головній — `JSON.stringify` монет.
+ Структура: плоска колекція `coins`, монета = документ з полем `country`; фото — Storage, в документі URL.
+ У симуляторі на робочому Mac Firestore недоступний (мережа корпоративного клієнта), на S25 Ultra через tunnel — ок.
 
 ---
 
