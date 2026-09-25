@@ -72,13 +72,16 @@
 
 ## Поточний стан
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
-в iOS Simulator через Expo Go. Далі — розбір `app.json`, `index.ts`, `App.tsx`, `package.json`.
+в iOS Simulator через Expo Go. Додано Expo Router з bottom tabs (Головна / Список / Інфо),
+кожен таб — порожній екран з назвою. Розбір структури — по ходу.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
 - Мережа на робочому Mac: LAN-IP (VPN `utun4` і навіть Wi-Fi) блокується корпоративним клієнтом,
   `--localhost` слухає лише IPv6 `::1`, а Expo Go йде на IPv4. Рішення: `npm start` =
   `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1 expo start` (симулятор); для телефону — `npm run start:tunnel`.
+- Expo Router: `main` = `expo-router/entry`, `scheme` в `app.json`, `index.ts`/`App.tsx` видалено.
+  Роути у `src/app/`: `_layout.tsx` (`Tabs` + іконки Ionicons), `index.tsx`, `list.tsx`, `info.tsx`.
 
 ---
 
