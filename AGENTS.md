@@ -75,8 +75,8 @@
 в iOS Simulator через Expo Go. Додано Expo Router з bottom tabs (Головна / Список / Інфо),
 кожен таб — порожній екран з назвою. Розбір структури — по ходу.
 Підключено Firestore: колекція `coins` читається через провайдер. Головна — `FlatList` з `CoinCard`,
-тап відкриває екран монети `coin/[id]` (Stack поверх табів). На «Списку» — `countries` як JSON.
-Далі — фільтр монет за країною.
+тап відкриває екран монети `coin/[id]` (Stack поверх табів). «Список» — фільтр за країною:
+нативний `Picker` з `@expo/ui`, при старті випадкова країна, монети запитуються з Firestore через `where`.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -94,6 +94,14 @@
 - Навігація Stack + Tabs: корінь `src/app/_layout.tsx` = `Stack` (+ `CoinsProvider`), таби в групі `(tabs)/`,
  екран деталей `coin/[id].tsx` (`useLocalSearchParams`), перехід через `<Link href asChild>` + `Pressable`.
  `CoinCard` у `src/components/`, фото через `expo-image` (є в Expo Go).
+- `countries/{id}` = `{ name_ua, name_en, flag }`, `coin.country` = id країни (`ua`, `us`).
+ Фільтр: `fetchCoinsByCountry` (`query` + `where('country', '==', id)`), UI — універсальний `Picker`
+ з `@expo/ui` (iOS — SwiftUI `Picker` menu, Android — Material 3 dropdown; є в Expo Go).
+- Залежності: у lock-файлі був `react-dom@19.3.0` (потребує `react@^19.3`), через це `npm install` падав на ERESOLVE.
+ Виправлено через `npx expo install react-dom` (19.2.3). `--legacy-peer-deps` не використовувати: він вичищає optional peers.
+- `start:tunnel` періодично падає (`session closed` / `remote gone away`) — ngrok обриває старий агент 2.x з `@expo/ngrok`
+ ([expo#43335](https://github.com/expo/expo/issues/43335)). Обхід: спершу `npm start`, потім `npm run start:tunnel`
+ або просто повторити спробу; якщо перестане працювати — власний тунель (`cloudflared`) + `EXPO_PACKAGER_PROXY_URL`.
 
 ---
 
