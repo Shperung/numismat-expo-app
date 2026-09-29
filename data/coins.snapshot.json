@@ -1,12 +1,22 @@
 [
   {
+    "id": "6C2Cs2wEkx5D6INGFwat",
+    "info": "Liberty. In God We Trust",
+    "country": "us",
+    "avers": "https://firebasestorage.googleapis.com/v0/b/tetiana-redko.appspot.com/o/coins%2Fus%2F25-cent-1980-avers.jpg?alt=media&token=c096df6b-4f95-43ab-977a-5cda54bad774",
+    "currency": "cent",
+    "revers": "https://firebasestorage.googleapis.com/v0/b/tetiana-redko.appspot.com/o/coins%2Fus%2F25-cent-1980-revers.jpg?alt=media&token=90fdb302-3ca0-4c9d-b26e-e9ab7eea0d36",
+    "value": "25",
+    "name": "Quareter Dollar"
+  },
+  {
     "id": "z0JXU0tDjOEr8jQgScuI",
-    "country": "ua",
     "value": "10",
-    "info": "ДСНС України Сміливі рятувати життя",
     "revers": "https://firebasestorage.googleapis.com/v0/b/tetiana-redko.appspot.com/o/coins%2Fua%2F10-g-revers-2025.jpg?alt=media&token=05d0b6bc-0e44-4cac-88a2-570ce2a63832",
+    "name": "10 гривень",
+    "country": "ua",
     "currency": "uag",
-    "nane": "10 гривень",
+    "info": "ДСНС України Сміливі рятувати життя",
     "avers": "https://firebasestorage.googleapis.com/v0/b/tetiana-redko.appspot.com/o/coins%2Fua%2F10-g-avers-dsns.jpg?alt=media&token=efa71978-f3b3-42a8-98d9-553e1b490752"
   }
 ]

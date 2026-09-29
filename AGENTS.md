@@ -74,8 +74,9 @@
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
 в iOS Simulator через Expo Go. Додано Expo Router з bottom tabs (Головна / Список / Інфо),
 кожен таб — порожній екран з назвою. Розбір структури — по ходу.
-Підключено Firestore: колекція `coins` читається через провайдер і виводиться на Головній як JSON.
-Далі — тип `Coin` за реальними даними.
+Підключено Firestore: колекція `coins` читається через провайдер. Головна — `FlatList` з `CoinCard`,
+тап відкриває екран монети `coin/[id]` (Stack поверх табів). На «Списку» — `countries` як JSON.
+Далі — фільтр монет за країною.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -89,6 +90,10 @@
  `src/providers/coins-provider.tsx` (context + `useCoins`), на Головній — `JSON.stringify` монет.
  Структура: плоска колекція `coins`, монета = документ з полем `country`; фото — Storage, в документі URL.
  У симуляторі на робочому Mac Firestore недоступний (мережа корпоративного клієнта), на S25 Ultra через tunnel — ок.
+- Колекція `countries` (довідник для фільтра; при великій кількості монет — `where('country', '==', ...)` + пагінація).
+- Навігація Stack + Tabs: корінь `src/app/_layout.tsx` = `Stack` (+ `CoinsProvider`), таби в групі `(tabs)/`,
+ екран деталей `coin/[id].tsx` (`useLocalSearchParams`), перехід через `<Link href asChild>` + `Pressable`.
+ `CoinCard` у `src/components/`, фото через `expo-image` (є в Expo Go).
 
 ---
 

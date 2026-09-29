@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
-import { fetchCollection } from '../lib/fetch-collection';
+import { fetchCollection } from '../../lib/fetch-collection';
 
 export default function ListScreen() {
   const [text, setText] = useState('Завантаження...');
