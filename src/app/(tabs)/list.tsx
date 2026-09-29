@@ -4,25 +4,19 @@ import { FlatList, Text } from 'react-native';
 
 import { CoinCard } from '../../components/coin-card';
 import { fetchCoinsByCountry } from '../../lib/fetch-coins-by-country';
-import { fetchCollection } from '../../lib/fetch-collection';
+import { pickRandom } from '../../lib/pick-random';
+import { useCountries } from '../../providers/countries-provider';
 import type { Coin } from '../../types/coin';
-import type { Country } from '../../types/country';
 
 export default function ListScreen() {
-  const [countries, setCountries] = useState<Country[]>([]);
+  const { countries, error: countriesError } = useCountries();
   const [country, setCountry] = useState<string>();
   const [coins, setCoins] = useState<Coin[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCollection('countries')
-      .then((data) => {
-        const list = data as Country[];
-        setCountries(list);
-        setCountry(list[Math.floor(Math.random() * list.length)]?.id);
-      })
-      .catch((e) => setError(String(e)));
-  }, []);
+    setCountry(pickRandom(countries)?.id);
+  }, [countries]);
 
   useEffect(() => {
     if (!country) return;
@@ -35,7 +29,7 @@ export default function ListScreen() {
     };
   }, [country]);
 
-  if (error) return <Text style={{ padding: 16 }}>{error}</Text>;
+  if (countriesError || error) return <Text style={{ padding: 16 }}>{countriesError ?? error}</Text>;
   if (!country) return <Text style={{ padding: 16 }}>Завантаження...</Text>;
 
   return (

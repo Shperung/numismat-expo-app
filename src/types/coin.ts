@@ -4,6 +4,7 @@ export type Coin = {
   name: string;
   value: number;
   currency: string;
+  year: number;
   info?: string;
   avers?: string;
   revers?: string;

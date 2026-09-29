@@ -74,9 +74,9 @@
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
 в iOS Simulator через Expo Go. Додано Expo Router з bottom tabs (Головна / Список / Інфо),
 кожен таб — порожній екран з назвою. Розбір структури — по ходу.
-Підключено Firestore: колекція `coins` читається через провайдер. Головна — `FlatList` з `CoinCard`,
-тап відкриває екран монети `coin/[id]` (Stack поверх табів). «Список» — фільтр за країною:
-нативний `Picker` з `@expo/ui`, при старті випадкова країна, монети запитуються з Firestore через `where`.
+Підключено Firestore. `countries` вантажаться при старті (`CountriesProvider`). Головна — випадкова країна,
+її монети через `where`, одна випадкова монета показується як `CoinDetails`. «Список» — `Picker` країн
+(`@expo/ui`) + `FlatList` з `CoinCard`, тап відкриває `coin/[id]` (Stack поверх табів; бере монету з `CoinsProvider`).
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.

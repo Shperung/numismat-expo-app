@@ -15,7 +15,7 @@ export function CoinCard({ coin }: { coin: Coin }) {
         <View style={styles.body}>
           <Text style={styles.name}>{coin.name}</Text>
           <Text>
-            {coin.value} {coin.currency}
+            {coin.value} {coin.currency} · {coin.year}
           </Text>
           <Text style={styles.country}>{coin.country}</Text>
         </View>
