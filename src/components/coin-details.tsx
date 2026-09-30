@@ -1,24 +1,40 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { startCoinChat } from '../lib/ai';
+import { askServer } from '../lib/numismat-server';
 import type { Coin } from '../types/coin';
+
+const QUESTION = 'Розкажи цікаві факти про цю монету';
+
+const aiButtons = [
+  {
+    id: 'gemini',
+    title: 'Запитати в Gemini про монету',
+    logo: require('../../assets/ai/gemini.png'),
+    ask: async (coin: Coin) => (await startCoinChat(coin).sendMessage(QUESTION)).response.text(),
+  },
+  {
+    id: 'groq',
+    title: 'Запитати в Groq про монету',
+    logo: require('../../assets/ai/groq.png'),
+    ask: (coin: Coin) => askServer('groq-gpt-oss', coin, [{ role: 'user', content: QUESTION }]),
+  },
+];
 
 export function CoinDetails({ coin }: { coin: Coin }) {
   const [answer, setAnswer] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  const askFacts = async () => {
-    setLoading(true);
+  const askFacts = async (button: (typeof aiButtons)[number]) => {
+    setLoadingId(button.id);
     try {
-      const result = await startCoinChat(coin).sendMessage('Розкажи цікаві факти про цю монету');
-      setAnswer(result.response.text());
+      setAnswer(await button.ask(coin));
     } catch (e) {
       setAnswer(`Помилка: ${String(e)}`);
     } finally {
-      setLoading(false);
+      setLoadingId(null);
     }
   };
 
@@ -36,11 +52,20 @@ export function CoinDetails({ coin }: { coin: Coin }) {
       <Text>Країна: {coin.country}</Text>
       {coin.info ? <Text style={styles.info}>{coin.info}</Text> : null}
 
-      <Pressable style={styles.aiButton} onPress={askFacts} disabled={loading}>
-        <Ionicons name="sparkles" size={20} color="#fff" />
-        <Text style={styles.aiButtonText}>Дізнатись цікаві факти про цю монету</Text>
-      </Pressable>
-      {loading ? <ActivityIndicator /> : null}
+      <View style={styles.aiButtons}>
+        {aiButtons.map((button) => (
+          <Pressable
+            key={button.id}
+            style={styles.aiButton}
+            onPress={() => askFacts(button)}
+            disabled={loadingId !== null}
+          >
+            <Image source={button.logo} style={styles.aiLogo} />
+            <Text style={styles.aiButtonText}>{button.title}</Text>
+            {loadingId === button.id ? <ActivityIndicator /> : null}
+          </Pressable>
+        ))}
+      </View>
       {answer ? <Text style={styles.info}>{answer}</Text> : null}
     </ScrollView>
   );
@@ -52,14 +77,17 @@ const styles = StyleSheet.create({
   photo: { width: 150, height: 150, borderRadius: 75, backgroundColor: '#eee' },
   name: { fontSize: 22, fontWeight: '700' },
   info: { marginTop: 8, lineHeight: 20 },
+  aiButtons: { gap: 8, marginTop: 16 },
   aiButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
+    gap: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: '#1a73e8',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
   },
-  aiButtonText: { color: '#fff', fontWeight: '600', flexShrink: 1 },
+  aiLogo: { width: 24, height: 24, borderRadius: 4 },
+  aiButtonText: { fontWeight: '600', flex: 1 },
 });

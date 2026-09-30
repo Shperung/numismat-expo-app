@@ -6,6 +6,7 @@
 Паралельно той самий додаток робиться нативно (кроки плану синхронізовані між проєктами):
 - Kotlin / Android: `/Users/viktor_kravchuk/traning/numismat-kotlin-app`
 - Swift / iOS: `/Users/viktor_kravchuk/traning/numismat-swift-app`
+- Спільний бекенд (AI-проксі): `/Users/viktor_kravchuk/traning/numismat-server` — див. розділ "Бекенд numismat-server"
 
 ## Про автора
 - Великий досвід у React Native / TypeScript.
@@ -57,6 +58,26 @@
 | `expo-sqlite`           | Room                             | SwiftData                                |
 | `package.json`, `app.json` | `build.gradle.kts`            | `.xcodeproj` + SPM                       |
 
+## Бекенд numismat-server (спільний для Expo / Kotlin / Swift)
+Навіщо: кнопки «цікаві факти» від різних AI-провайдерів (OpenAI, Groq, OpenRouter, …). Ключі цих API не можна
+тримати в додатку → один сервіс-проксі на всі три клієнти. Також: промпт і список провайдерів змінюються без релізу
+додатків, rate limit / логи / кеш — в одному місці. Gemini через Firebase AI Logic лишається окремим підходом «без свого сервера».
+- Стек: Node 20+ + TypeScript + Hono, окремий репозиторій (не частина жодного додатку).
+- Хостинг: Hetzner CX11 (1 vCPU, 2 GB RAM, Ubuntu), вже є nginx + сайт `tetiana-redko.com`.
+ `inua.tetiana-redko.com` (DNS `A` → `116.203.220.233`, вже існував) → nginx + certbot (HTTPS) → `proxy_pass http://127.0.0.1:3000`
+ (`proxy_read_timeout 60s`). Сервіс під `pm2` (`numismat-server`), порт 3000 назовні не відкривати.
+ Задеплоєно: `https://inua.tetiana-redko.com/providers` працює.
+- Ollama на CX11 не тягне (2 GB RAM) → відкриті моделі через Groq / OpenRouter (`:free`). OpenAI — платно (prepaid, від $5).
+- Сервер stateless: клієнт щоразу шле всю історію `messages`, сервер додає системний промпт про монету.
+- Захист: `Authorization: Bearer <токен>` + rate limit. Ключі провайдерів — лише в `.env` на сервері.
+- Клієнти: Expo — `fetch`, Kotlin — Ktor Client / OkHttp, Swift — `URLSession` + `async/await`.
+
+Контракт (чернетка):
+```
+GET  /providers → [{ id: "groq-gpt-oss", title: "GPT-OSS (Groq)" }, ...]
+POST /chat      { provider, coin: Coin, messages: [{ role: "user" | "assistant", content }] } → { text }
+```
+
 ## План
 0. [x] Середовище: Node, Watchman, Xcode + iOS Simulator, Expo Go на S25 Ultra
 1. [ ] (пропускаємо — TypeScript відомий)
@@ -69,6 +90,7 @@
 8. [ ] `expo-sqlite`: збереження між запусками
 9. [ ] Фото монет (камера/галерея)
 10. [ ] Пошук, фільтри, статистика
+11. [ ] AI «цікаві факти»: Gemini (Firebase AI Logic) ✓ → кнопка Groq через `numismat-server` ✓ → markdown → чат з контекстом → інші провайдери
 
 ## Поточний стан
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
@@ -77,7 +99,11 @@
 Підключено Firestore. `countries` вантажаться при старті (`CountriesProvider`). Головна — випадкова країна,
 її монети через `where`, одна випадкова монета показується як `CoinDetails`. «Список» — `Picker` країн
 (`@expo/ui`) + `FlatList` з `CoinCard`, тап відкриває `coin/[id]` (Stack поверх табів; бере монету з `CoinsProvider`).
-У `CoinDetails` — кнопка «Дізнатись цікаві факти» (Firebase AI Logic, Gemini) — працює на S25 Ultra, поки одна відповідь без чату, markdown не рендериться.
+AI-кнопки в `CoinDetails` — масив `aiButtons` (`{ id, title, logo, ask }`), одна під одною, спільна відповідь.
+Обидві працюють на S25 Ultra: «Запитати в Gemini» (Firebase AI Logic) і «Запитати в Groq»
+(`numismat-server` → `https://inua.tetiana-redko.com/chat`, provider `groq-gpt-oss`).
+Поки одна відповідь без чату, markdown не рендериться, сервер без авторизації.
+Наступне — markdown у відповідях, чат з контекстом; на сервері — Bearer-токен, інші провайдери.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -110,6 +136,25 @@
  Модель `gemini-3.5-flash-lite` (2.5 для нових проєктів недоступні).
  App Check для AI Logic був Enforced (401 «App Check token is invalid») → Security → App Check → AI Logic → Set up → Unenforced.
  З 2 листопада 2026 App Check для AI Logic стане обов'язковим → до того: debug token / `@react-native-firebase/app-check` (dev build) / Cloud Function.
+- `numismat-server`, крок 1: каркас Hono + `@hono/node-server` (ESM, `tsx watch` для dev, `tsc` → `dist`),
+ слухає `127.0.0.1:3000`, `GET /providers` — захардкоджений список. Далі: `POST /chat` (спершу Groq), `.env`, Bearer-токен.
+- `numismat-server`, деплой на Hetzner: код у `/var/www/numismat-server` (`git clone` з GitHub `Shperung/numismat-server`).
+ На сервері Node 20.9 → TypeScript 7 (`tsc` — ESM без розширення) не запускається → `typescript@5.9`.
+ nginx: `default` має `server_name *.tetiana-redko.com` на 443 з сертифікатом лише `tetiana-redko.com` →
+ будь-який піддомен без власного 443-блоку отримує чужий сертифікат (SSL-помилка).
+ `certbot --nginx -d inua...` через цей wildcard записав сертифікат у `default` і зламав основний сайт → відкат з бекапу,
+ у файлі `inua.tetiana-redko.com` 443-блок з `live/inua.tetiana-redko.com/` прописано вручну + редирект з 80.
+ Для нових піддоменів: `certbot certonly --nginx -d <домен>` (без правки конфігів) + 443-блок вручну. Бекап: `/root/nginx.bak`.
+ pm2: `tetiana-redko.com` (id 0) — основний сайт, не чіпати; команди лише за іменем, без `all`.
+ Оновлення: `git pull && npm ci && npm run build && pm2 restart numismat-server`.
+- `numismat-server`, `POST /chat`: провайдери в масиві `{ id, title, url, model, apiKey }` (усі OpenAI-сумісні, `fetch` без SDK),
+ `/providers` віддає лише `id`/`title`. Системний промпт — той самий, що для Gemini. Помилка провайдера → лог + `502`.
+ Groq: Llama тепер Enterprise («Contact Sales») → `openai/gpt-oss-120b` (Developer plan), id `groq-gpt-oss`.
+ Ключ — `.env` (`GROQ_API_KEY`), читається `node --env-file=.env` (Node 20.6+, без `dotenv`).
+ pm2 запускається з `--node-args="--env-file=.env"` (`restart` зберігає аргументи створення → змінити їх можна лише `delete` + `start`).
+ Модель галюцинує факти про монети і відповідає з markdown (`**`) → в клієнтах рендерити markdown, промпт уточнити пізніше.
+- Expo → `numismat-server`: `askServer(provider, coin, messages)` — `fetch` на `https://inua.tetiana-redko.com/chat`,
+ URL константою (не секрет). Логотипи AI — локальні PNG у `assets/ai/` (`require`, `expo-image`).
 
 ---
 
