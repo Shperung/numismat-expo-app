@@ -1,9 +1,27 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { startCoinChat } from '../lib/ai';
 import type { Coin } from '../types/coin';
 
 export function CoinDetails({ coin }: { coin: Coin }) {
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const askFacts = async () => {
+    setLoading(true);
+    try {
+      const result = await startCoinChat(coin).sendMessage('Розкажи цікаві факти про цю монету');
+      setAnswer(result.response.text());
+    } catch (e) {
+      setAnswer(`Помилка: ${String(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.photos}>
@@ -17,6 +35,13 @@ export function CoinDetails({ coin }: { coin: Coin }) {
       <Text>Рік: {coin.year}</Text>
       <Text>Країна: {coin.country}</Text>
       {coin.info ? <Text style={styles.info}>{coin.info}</Text> : null}
+
+      <Pressable style={styles.aiButton} onPress={askFacts} disabled={loading}>
+        <Ionicons name="sparkles" size={20} color="#fff" />
+        <Text style={styles.aiButtonText}>Дізнатись цікаві факти про цю монету</Text>
+      </Pressable>
+      {loading ? <ActivityIndicator /> : null}
+      {answer ? <Text style={styles.info}>{answer}</Text> : null}
     </ScrollView>
   );
 }
@@ -27,4 +52,14 @@ const styles = StyleSheet.create({
   photo: { width: 150, height: 150, borderRadius: 75, backgroundColor: '#eee' },
   name: { fontSize: 22, fontWeight: '700' },
   info: { marginTop: 8, lineHeight: 20 },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#1a73e8',
+  },
+  aiButtonText: { color: '#fff', fontWeight: '600', flexShrink: 1 },
 });

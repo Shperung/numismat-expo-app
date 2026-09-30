@@ -77,6 +77,7 @@
 Підключено Firestore. `countries` вантажаться при старті (`CountriesProvider`). Головна — випадкова країна,
 її монети через `where`, одна випадкова монета показується як `CoinDetails`. «Список» — `Picker` країн
 (`@expo/ui`) + `FlatList` з `CoinCard`, тап відкриває `coin/[id]` (Stack поверх табів; бере монету з `CoinsProvider`).
+У `CoinDetails` — кнопка «Дізнатись цікаві факти» (Firebase AI Logic, Gemini) — працює на S25 Ultra, поки одна відповідь без чату, markdown не рендериться.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -102,6 +103,13 @@
 - `start:tunnel` періодично падає (`session closed` / `remote gone away`) — ngrok обриває старий агент 2.x з `@expo/ngrok`
  ([expo#43335](https://github.com/expo/expo/issues/43335)). Обхід: спершу `npm start`, потім `npm run start:tunnel`
  або просто повторити спробу; якщо перестане працювати — власний тунель (`cloudflared`) + `EXPO_PACKAGER_PROXY_URL`.
+- Firebase AI Logic (`firebase/ai`, входить у `firebase`), ключ Gemini в додатку не потрібен.
+ Gemini Developer API на Blaze = Prepay (429 «prepayment credits are depleted», $300 trial не діє) →
+ перейшли на `AgentPlatformBackend('global')` (`VertexAIBackend` — deprecated) (Cloud Billing, тратить trial-кредити).
+ `src/lib/ai.ts` — `startCoinChat(coin)` = `getGenerativeModel` з `systemInstruction` про монету + `startChat()`.
+ Модель `gemini-3.5-flash-lite` (2.5 для нових проєктів недоступні).
+ App Check для AI Logic був Enforced (401 «App Check token is invalid») → Security → App Check → AI Logic → Set up → Unenforced.
+ З 2 листопада 2026 App Check для AI Logic стане обов'язковим → до того: debug token / `@react-native-firebase/app-check` (dev build) / Cloud Function.
 
 ---
 
