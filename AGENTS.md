@@ -99,9 +99,11 @@ POST /chat      { provider, coin: Coin, messages: [{ role: "user" | "assistant",
 Підключено Firestore. `countries` вантажаться при старті (`CountriesProvider`). Головна — випадкова країна,
 її монети через `where`, одна випадкова монета показується як `CoinDetails`. «Список» — `Picker` країн
 (`@expo/ui`) + `FlatList` з `CoinCard`, тап відкриває `coin/[id]` (Stack поверх табів; бере монету з `CoinsProvider`).
-AI-кнопки в `CoinDetails` — масив `aiButtons` (`{ id, title, logo, ask }`), одна під одною, спільна відповідь.
-Обидві працюють на S25 Ultra: «Запитати в Gemini» (Firebase AI Logic) і «Запитати в Groq»
-(`numismat-server` → `https://inua.tetiana-redko.com/chat`, provider `groq-gpt-oss`).
+AI-кнопки в `CoinDetails` (`AiButton = { id, title, logo, ask }`) — акордеон: відповідь під своєю кнопкою,
+зберігається (`answers` / `open` / `loading` — `Record<id, …>`), повторний тап ховає/показує, помилку — перезапитує;
+можна відкрити всі, запити паралельні:
+статична «Запитати в Gemini» (Firebase AI Logic) + динамічні з `GET /providers` (`fetchProviders`, `{ id, title, logo }`,
+logo — URL) → `askServer(id, …)` → `https://inua.tetiana-redko.com/chat`. Gemini і Groq перевірено на S25 Ultra.
 Поки одна відповідь без чату, markdown не рендериться, сервер без авторизації.
 Наступне — markdown у відповідях, чат з контекстом; на сервері — Bearer-токен, інші провайдери.
 
@@ -154,7 +156,8 @@ AI-кнопки в `CoinDetails` — масив `aiButtons` (`{ id, title, logo,
  pm2 запускається з `--node-args="--env-file=.env"` (`restart` зберігає аргументи створення → змінити їх можна лише `delete` + `start`).
  Модель галюцинує факти про монети і відповідає з markdown (`**`) → в клієнтах рендерити markdown, промпт уточнити пізніше.
 - Expo → `numismat-server`: `askServer(provider, coin, messages)` — `fetch` на `https://inua.tetiana-redko.com/chat`,
- URL константою (не секрет). Логотипи AI — локальні PNG у `assets/ai/` (`require`, `expo-image`).
+ URL константою (не секрет). Логотип Gemini — локальний PNG `assets/ai/gemini.png`, решта — URL з `/providers`
+ (`expo-image` приймає і `require`, і рядок-URL). Кнопки серверних моделей будуються зі списку сервера — нова модель без релізу.
 
 ---
 

@@ -1,40 +1,64 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { startCoinChat } from '../lib/ai';
-import { askServer } from '../lib/numismat-server';
+import { askServer, fetchProviders, type Provider } from '../lib/numismat-server';
 import type { Coin } from '../types/coin';
 
 const QUESTION = 'Розкажи цікаві факти про цю монету';
 
-const aiButtons = [
-  {
-    id: 'gemini',
-    title: 'Запитати в Gemini про монету',
-    logo: require('../../assets/ai/gemini.png'),
-    ask: async (coin: Coin) => (await startCoinChat(coin).sendMessage(QUESTION)).response.text(),
-  },
-  {
-    id: 'groq',
-    title: 'Запитати в Groq про монету',
-    logo: require('../../assets/ai/groq.png'),
-    ask: (coin: Coin) => askServer('groq-gpt-oss', coin, [{ role: 'user', content: QUESTION }]),
-  },
-];
+type AiButton = {
+  id: string;
+  title: string;
+  logo: number | string;
+  ask: (coin: Coin) => Promise<string>;
+};
+
+const geminiButton: AiButton = {
+  id: 'gemini',
+  title: 'Запитати в Gemini про монету',
+  logo: require('../../assets/ai/gemini.png'),
+  ask: async (coin) => (await startCoinChat(coin).sendMessage(QUESTION)).response.text(),
+};
+
+const toButton = (p: Provider): AiButton => ({
+  id: p.id,
+  title: `Запитати в ${p.title} про монету`,
+  logo: p.logo,
+  ask: (coin) => askServer(p.id, coin, [{ role: 'user', content: QUESTION }]),
+});
 
 export function CoinDetails({ coin }: { coin: Coin }) {
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, { text: string; error?: boolean }>>({});
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providersError, setProvidersError] = useState<string | null>(null);
 
-  const askFacts = async (button: (typeof aiButtons)[number]) => {
-    setLoadingId(button.id);
+  useEffect(() => {
+    fetchProviders()
+      .then(setProviders)
+      .catch((e) => setProvidersError(String(e)));
+  }, []);
+
+  const aiButtons = [geminiButton, ...providers.map(toButton)];
+
+  const onPress = async ({ id, ask }: AiButton) => {
+    if (answers[id] && !answers[id].error) {
+      setOpen((o) => ({ ...o, [id]: !o[id] }));
+      return;
+    }
+    setLoading((l) => ({ ...l, [id]: true }));
+    setOpen((o) => ({ ...o, [id]: true }));
     try {
-      setAnswer(await button.ask(coin));
+      const text = await ask(coin);
+      setAnswers((a) => ({ ...a, [id]: { text } }));
     } catch (e) {
-      setAnswer(`Помилка: ${String(e)}`);
+      setAnswers((a) => ({ ...a, [id]: { text: `Помилка: ${String(e)}`, error: true } }));
     } finally {
-      setLoadingId(null);
+      setLoading((l) => ({ ...l, [id]: false }));
     }
   };
 
@@ -54,19 +78,31 @@ export function CoinDetails({ coin }: { coin: Coin }) {
 
       <View style={styles.aiButtons}>
         {aiButtons.map((button) => (
-          <Pressable
-            key={button.id}
-            style={styles.aiButton}
-            onPress={() => askFacts(button)}
-            disabled={loadingId !== null}
-          >
-            <Image source={button.logo} style={styles.aiLogo} />
-            <Text style={styles.aiButtonText}>{button.title}</Text>
-            {loadingId === button.id ? <ActivityIndicator /> : null}
-          </Pressable>
+          <View key={button.id} style={styles.aiItem}>
+            <Pressable
+              style={styles.aiButton}
+              onPress={() => onPress(button)}
+              disabled={loading[button.id]}
+            >
+              <Image source={button.logo} style={styles.aiLogo} />
+              <Text style={styles.aiButtonText}>{button.title}</Text>
+              {loading[button.id] ? (
+                <ActivityIndicator />
+              ) : answers[button.id] && !answers[button.id].error ? (
+                <Ionicons name={open[button.id] ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+              ) : null}
+            </Pressable>
+            {open[button.id] && answers[button.id] ? (
+              <Text style={[styles.answer, answers[button.id].error && styles.error]}>
+                {answers[button.id].text}
+              </Text>
+            ) : null}
+          </View>
         ))}
+        {providersError ? (
+          <Text style={styles.error}>Помилка завантаження моделей: {providersError}</Text>
+        ) : null}
       </View>
-      {answer ? <Text style={styles.info}>{answer}</Text> : null}
     </ScrollView>
   );
 }
@@ -78,16 +114,16 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: '700' },
   info: { marginTop: 8, lineHeight: 20 },
   aiButtons: { gap: 8, marginTop: 16 },
-  aiButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
+  aiItem: {
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
     backgroundColor: '#fff',
+    overflow: 'hidden',
   },
+  aiButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
   aiLogo: { width: 24, height: 24, borderRadius: 4 },
   aiButtonText: { fontWeight: '600', flex: 1 },
+  answer: { paddingHorizontal: 12, paddingBottom: 12, lineHeight: 20 },
+  error: { color: '#c62828' },
 });

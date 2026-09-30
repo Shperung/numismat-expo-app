@@ -4,6 +4,14 @@ const API_URL = 'https://inua.tetiana-redko.com';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
+export type Provider = { id: string; title: string; logo: string };
+
+export async function fetchProviders() {
+  const res = await fetch(`${API_URL}/providers`);
+  if (!res.ok) throw new Error(`${res.status}`);
+  return (await res.json()) as Provider[];
+}
+
 export async function askServer(provider: string, coin: Coin, messages: Message[]) {
   const res = await fetch(`${API_URL}/chat`, {
     method: 'POST',
