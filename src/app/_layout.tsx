@@ -10,6 +10,10 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="coin/[id]" options={{ title: 'Монета', headerBackTitle: 'Назад' }} />
+          <Stack.Screen
+            name="photo"
+            options={{ presentation: 'fullScreenModal', animation: 'fade', headerShown: false }}
+          />
         </Stack>
       </CoinsProvider>
     </CountriesProvider>

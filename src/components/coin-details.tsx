@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { startCoinChat } from '../lib/ai';
 import { askServer, fetchProviders, type Provider } from '../lib/numismat-server';
 import type { Coin } from '../types/coin';
+import { MarkdownText } from './markdown-text';
 
 const QUESTION = 'Розкажи цікаві факти про цю монету';
 
@@ -65,8 +67,18 @@ export function CoinDetails({ coin }: { coin: Coin }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.photos}>
-        <Image source={coin.avers} style={styles.photo} contentFit="cover" />
-        <Image source={coin.revers} style={styles.photo} contentFit="cover" />
+        {[coin.avers, coin.revers].map((uri, index) => (
+          <Link
+            key={index}
+            href={{ pathname: '/photo', params: { uri: encodeURIComponent(uri ?? '') } }}
+            asChild
+            disabled={!uri}
+          >
+            <Pressable>
+              <Image source={uri} style={styles.photo} contentFit="cover" />
+            </Pressable>
+          </Link>
+        ))}
       </View>
       <Text style={styles.name}>{coin.name}</Text>
       <Text>
@@ -93,9 +105,11 @@ export function CoinDetails({ coin }: { coin: Coin }) {
               ) : null}
             </Pressable>
             {open[button.id] && answers[button.id] ? (
-              <Text style={[styles.answer, answers[button.id].error && styles.error]}>
-                {answers[button.id].text}
-              </Text>
+              answers[button.id].error ? (
+                <Text style={[styles.answer, styles.error]}>{answers[button.id].text}</Text>
+              ) : (
+                <MarkdownText value={answers[button.id].text} style={styles.answer} />
+              )
             ) : null}
           </View>
         ))}

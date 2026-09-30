@@ -104,8 +104,8 @@ AI-кнопки в `CoinDetails` (`AiButton = { id, title, logo, ask }`) — а�
 можна відкрити всі, запити паралельні:
 статична «Запитати в Gemini» (Firebase AI Logic) + динамічні з `GET /providers` (`fetchProviders`, `{ id, title, logo }`,
 logo — URL) → `askServer(id, …)` → `https://inua.tetiana-redko.com/chat`. Gemini і Groq перевірено на S25 Ultra.
-Поки одна відповідь без чату, markdown не рендериться, сервер без авторизації.
-Наступне — markdown у відповідях, чат з контекстом; на сервері — Bearer-токен, інші провайдери.
+Відповіді рендеряться як markdown (`MarkdownText`). Тап по фото монети → `photo` (fullScreenModal, pinch zoom). Поки одна відповідь без чату, сервер без авторизації.
+Наступне — чат з контекстом; на сервері — Bearer-токен.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -158,6 +158,17 @@ logo — URL) → `askServer(id, …)` → `https://inua.tetiana-redko.com/chat`
 - Expo → `numismat-server`: `askServer(provider, coin, messages)` — `fetch` на `https://inua.tetiana-redko.com/chat`,
  URL константою (не секрет). Логотип Gemini — локальний PNG `assets/ai/gemini.png`, решта — URL з `/providers`
  (`expo-image` приймає і `require`, і рядок-URL). Кнопки серверних моделей будуються зі списку сервера — нова модель без релізу.
+- Markdown: `react-native-marked` (активно підтримується, чистий JS + `react-native-svg` → працює в Expo Go;
+ `react-native-markdown-display` покинутий з 2023). `<Markdown>` рендерить `FlatList` → всередині `ScrollView`
+ використовуємо хук `useMarkdown` у `src/components/markdown-text.tsx` (`colorScheme: 'light'`, бо картки білі).
+- Перегляд фото: модальний роут `src/app/photo.tsx` (`?uri=`; URL Storage містить `%2F`, а router декодує параметри →
+ передаємо `encodeURIComponent(uri)`, читаємо як є (router декодує рівно раз); інакше Storage → 400, чорний екран), у Stack — `presentation: 'fullScreenModal'`,
+ `animation: 'fade'`, без хедера + своя кнопка закриття (`router.back()`); на Android закриває й системний «назад».
+ Звичайний `modal` на iOS — sheet зі свайпом вниз, який конфліктує з pan-жестом зображення.
+ Zoom: `react-native-gesture-handler` + `react-native-reanimated` 4 (+ `react-native-worklets`), усе є в Expo Go,
+ Babel-плагін налаштовує `babel-preset-expo`. Жести: `Pinch` (1–5×) + `Pan` (коли збільшено) + подвійний тап (скидання) — усі в `Gesture.Simultaneous`.
+ `Gesture.Exclusive(doubleTap, …)` не брати: pinch чекає, поки Tap «провалиться» → зум лише після утримання пальців.
+ `GestureHandlerRootView` — всередині самого модального екрана (нативні модалки поза кореневим деревом жестів).
 
 ---
 
