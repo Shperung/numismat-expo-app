@@ -24,7 +24,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Додаток використовує фото, щоб додати монету в колекцію.",
+          "cameraPermission": "Додаток використовує камеру, щоб сфотографувати монету."
+        }
+      ]
     ]
   }
 }

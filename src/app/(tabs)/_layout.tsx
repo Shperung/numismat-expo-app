@@ -1,7 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 
+import { useUser } from '../../providers/auth-provider';
+
 export default function TabLayout() {
+  const user = useUser();
+
   return (
     <Tabs>
       <Tabs.Screen
@@ -19,11 +23,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="info"
+        name="admin"
         options={{
-          title: 'Інфо',
+          title: user ? 'Адмінка' : 'Увійти',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="information-circle" size={size} color={color} />
+            <Ionicons name={user ? 'construct' : 'log-in'} size={size} color={color} />
           ),
         }}
       />

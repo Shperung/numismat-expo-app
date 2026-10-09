@@ -5,17 +5,20 @@ import { FlatList, Text } from 'react-native';
 import { CoinCard } from '../../components/coin-card';
 import { fetchCoinsByCountry } from '../../lib/fetch-coins-by-country';
 import { pickRandom } from '../../lib/pick-random';
+import { useCoins } from '../../providers/coins-provider';
 import { useCountries } from '../../providers/countries-provider';
+import { colors } from '../../theme';
 import type { Coin } from '../../types/coin';
 
 export default function ListScreen() {
   const { countries, error: countriesError } = useCountries();
+  const { coins: allCoins } = useCoins();
   const [country, setCountry] = useState<string>();
   const [coins, setCoins] = useState<Coin[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCountry(pickRandom(countries)?.id);
+    setCountry((current) => current ?? pickRandom(countries)?.id);
   }, [countries]);
 
   useEffect(() => {
@@ -27,7 +30,7 @@ export default function ListScreen() {
     return () => {
       active = false;
     };
-  }, [country]);
+  }, [country, allCoins]);
 
   if (countriesError || error) return <Text style={{ padding: 16 }}>{countriesError ?? error}</Text>;
   if (!country) return <Text style={{ padding: 16 }}>Завантаження...</Text>;
@@ -37,6 +40,7 @@ export default function ListScreen() {
       data={coins}
       keyExtractor={(coin) => coin.id}
       renderItem={({ item }) => <CoinCard coin={item} />}
+      style={{ backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 16, gap: 12 }}
       ListHeaderComponent={
         <Host colorScheme="light" matchContents={{ vertical: true }} style={{ width: '100%' }}>

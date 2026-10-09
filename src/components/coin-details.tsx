@@ -1,11 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { startCoinChat } from '../lib/ai';
 import { askServer, fetchProviders, type Provider } from '../lib/numismat-server';
+import { useUser } from '../providers/auth-provider';
+import { useCountry } from '../providers/countries-provider';
+import { card, colors } from '../theme';
 import type { Coin } from '../types/coin';
 import { MarkdownText } from './markdown-text';
 
@@ -33,6 +36,8 @@ const toButton = (p: Provider): AiButton => ({
 });
 
 export function CoinDetails({ coin }: { coin: Coin }) {
+  const country = useCountry(coin.country);
+  const user = useUser();
   const [answers, setAnswers] = useState<Record<string, { text: string; error?: boolean }>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -65,32 +70,58 @@ export function CoinDetails({ coin }: { coin: Coin }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.photos}>
-        {[coin.avers, coin.revers].map((uri, index) => (
-          <Link
-            key={index}
-            href={{ pathname: '/photo', params: { uri: encodeURIComponent(uri ?? '') } }}
-            asChild
-            disabled={!uri}
-          >
-            <Pressable>
-              <Image source={uri} style={styles.photo} contentFit="cover" />
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <View style={[card, styles.hero]}>
+        {user ? (
+          <Link href={{ pathname: '/admin/coin', params: { id: coin.id } }} asChild>
+            <Pressable style={styles.edit} hitSlop={8}>
+              <Ionicons name="pencil" size={18} color={colors.accent} />
             </Pressable>
           </Link>
-        ))}
+        ) : null}
+        <View style={styles.photos}>
+          {sides.map(({ key, label }) => (
+            <View key={key} style={styles.side}>
+              <Link
+                href={{ pathname: '/photo', params: { uri: encodeURIComponent(coin[key] ?? '') } }}
+                asChild
+                disabled={!coin[key]}
+              >
+                <Pressable style={styles.photoWrap}>
+                  <Image source={coin[key]} style={styles.photo} contentFit="cover" />
+                  <View style={styles.zoomBadge}>
+                    <Ionicons name="expand-outline" size={14} color="#fff" />
+                  </View>
+                </Pressable>
+              </Link>
+              <Text style={styles.caption}>{label}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.name}>{coin.name}</Text>
+        <View style={styles.countryPill}>
+          <Text style={styles.countryText}>
+            {country ? `${country.flag}  ${country.name_ua}` : coin.country}
+          </Text>
+        </View>
       </View>
-      <Text style={styles.name}>{coin.name}</Text>
-      <Text>
-        {coin.value} {coin.currency}
-      </Text>
-      <Text>Рік: {coin.year}</Text>
-      <Text>Країна: {coin.country}</Text>
-      {coin.info ? <Text style={styles.info}>{coin.info}</Text> : null}
 
+      <View style={styles.stats}>
+        <Stat icon="cash-outline" label="Номінал" value={`${coin.value} ${coin.currency}`} />
+        <Stat icon="calendar-outline" label="Рік" value={String(coin.year)} />
+      </View>
+
+      {coin.info ? (
+        <View style={[card, styles.section]}>
+          <SectionTitle icon="document-text-outline" title="Опис" />
+          <Text style={styles.body}>{coin.info}</Text>
+        </View>
+      ) : null}
+
+      <SectionTitle icon="sparkles-outline" title="Цікаві факти від AI" />
       <View style={styles.aiButtons}>
         {aiButtons.map((button) => (
-          <View key={button.id} style={styles.aiItem}>
+          <View key={button.id} style={card}>
             <Pressable
               style={styles.aiButton}
               onPress={() => onPress(button)}
@@ -101,12 +132,16 @@ export function CoinDetails({ coin }: { coin: Coin }) {
               {loading[button.id] ? (
                 <ActivityIndicator />
               ) : answers[button.id] && !answers[button.id].error ? (
-                <Ionicons name={open[button.id] ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+                <Ionicons
+                  name={open[button.id] ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.muted}
+                />
               ) : null}
             </Pressable>
             {open[button.id] && answers[button.id] ? (
               answers[button.id].error ? (
-                <Text style={[styles.answer, styles.error]}>{answers[button.id].text}</Text>
+                <Text style={[styles.answer, styles.body, styles.error]}>{answers[button.id].text}</Text>
               ) : (
                 <MarkdownText value={answers[button.id].text} style={styles.answer} />
               )
@@ -114,30 +149,112 @@ export function CoinDetails({ coin }: { coin: Coin }) {
           </View>
         ))}
         {providersError ? (
-          <Text style={styles.error}>Помилка завантаження моделей: {providersError}</Text>
+          <Text style={[styles.body, styles.error]}>Помилка завантаження моделей: {providersError}</Text>
         ) : null}
       </View>
     </ScrollView>
   );
 }
 
+const sides = [
+  { key: 'avers', label: 'Аверс' },
+  { key: 'revers', label: 'Реверс' },
+] as const;
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+function Stat({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  return (
+    <View style={[card, styles.stat]}>
+      <View style={styles.statIcon}>
+        <Ionicons name={icon} size={18} color={colors.accent} />
+      </View>
+      <View style={styles.statBody}>
+        <Text style={styles.statLabel}>{label}</Text>
+        <Text style={styles.statValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function SectionTitle({ icon, title }: { icon: IconName; title: string }) {
+  return (
+    <View style={styles.sectionTitle}>
+      <Ionicons name={icon} size={18} color={colors.accent} />
+      <Text style={styles.sectionTitleText}>{title}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { padding: 16, gap: 8 },
-  photos: { flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 8 },
-  photo: { width: 150, height: 150, borderRadius: 75, backgroundColor: '#eee' },
-  name: { fontSize: 22, fontWeight: '700' },
-  info: { marginTop: 8, lineHeight: 20 },
-  aiButtons: { gap: 8, marginTop: 16 },
-  aiItem: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-    overflow: 'hidden',
+  screen: { backgroundColor: colors.background },
+  container: { padding: 16, gap: 16 },
+  hero: { alignItems: 'center', padding: 20, gap: 12 },
+  edit: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 1,
+    padding: 8,
+    borderRadius: 16,
+    backgroundColor: colors.accentSoft,
   },
-  aiButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
-  aiLogo: { width: 24, height: 24, borderRadius: 4 },
-  aiButtonText: { fontWeight: '600', flex: 1 },
-  answer: { paddingHorizontal: 12, paddingBottom: 12, lineHeight: 20 },
-  error: { color: '#c62828' },
+  photos: { flexDirection: 'row', gap: 20 },
+  side: { alignItems: 'center', gap: 8 },
+  photoWrap: { borderRadius: 65, boxShadow: '0 4px 12px rgba(16, 24, 40, 0.15)' },
+  photo: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 3,
+    borderColor: '#fff',
+    backgroundColor: colors.border,
+  },
+  zoomBadge: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    padding: 5,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  caption: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  name: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center', marginTop: 4 },
+  countryPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.background,
+  },
+  countryText: { fontSize: 15, color: colors.text },
+  stats: { flexDirection: 'row', gap: 12 },
+  stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
+  statIcon: { padding: 8, borderRadius: 10, backgroundColor: colors.accentSoft },
+  statBody: { flex: 1 },
+  statLabel: { fontSize: 12, color: colors.muted },
+  statValue: { fontSize: 16, fontWeight: '600', color: colors.text },
+  section: { padding: 16, gap: 8 },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitleText: { fontSize: 17, fontWeight: '700', color: colors.text },
+  body: { fontSize: 15, lineHeight: 22, color: colors.text },
+  aiButtons: { gap: 10 },
+  aiButton: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  aiLogo: { width: 28, height: 28, borderRadius: 8 },
+  aiButtonText: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
+  answer: {
+    marginHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  error: { color: colors.error },
 });

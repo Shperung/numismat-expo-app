@@ -91,6 +91,15 @@ POST /chat      { provider, coin: Coin, messages: [{ role: "user" | "assistant",
 9. [ ] Фото монет (камера/галерея)
 10. [ ] Пошук, фільтри, статистика
 11. [ ] AI «цікаві факти»: Gemini (Firebase AI Logic) ✓ → кнопка Groq через `numismat-server` ✓ → markdown → чат з контекстом → інші провайдери
+12. [ ] Адмінка (`src/app/admin/`), вхід за email/паролем — Firebase Auth + Security Rules (без сервера):
+ 12.1 [x] Console: Email/Password, адмін-користувач, правила Firestore/Storage (зроблено для web — спільний проєкт)
+ 12.2 [x] `initializeAuth` + AsyncStorage-persistence, `AuthProvider` (`useUser`)
+ 12.3 [x] Роути: `admin/coin`, `admin/country` у `Stack.Protected guard={!!user}`; таб «Інфо» → «Увійти» / «Адмінка»
+ 12.4 [x] Форма: поля `Coin` (назва, країна-`Picker`, номінал, валюта, рік, опис), валідація як у web
+ 12.5 [x] Фото аверсу/реверсу: `expo-image-picker` (камера / галерея, кроп 1:1) + превʼю
+ 12.6 [x] Збереження: Storage `uploadBytes` → `getDownloadURL` → `addDoc` / `updateDoc` → `CoinsProvider.reload()`
+ 12.7 [x] Редагування (✏️ у `CoinDetails`) / видалення (документ + фото зі Storage), форма країни, заповнення з фото через Gemini
+ 12.8 [ ] Перевірити на S25 Ultra; «✨ Покращити» фото (у web — `sharp` на сервері → сюди лише через `numismat-server`); те саме в Kotlin / Swift
 
 ## Поточний стан
 Крок 2 — проєкт створено з шаблону `blank-typescript` (Expo SDK 57, RN 0.86), Hello World запущено
@@ -104,8 +113,18 @@ AI-кнопки в `CoinDetails` (`AiButton = { id, title, logo, ask }`) — а�
 можна відкрити всі, запити паралельні:
 статична «Запитати в Gemini» (Firebase AI Logic) + динамічні з `GET /providers` (`fetchProviders`, `{ id, title, logo }`,
 logo — URL) → `askServer(id, …)` → `https://inua.tetiana-redko.com/chat`. Gemini і Groq перевірено на S25 Ultra.
+Дизайн: `src/theme.ts` (`colors`, `card` — білий блок, бордер, `boxShadow`), світла тема; `CoinDetails` —
+hero (фото з підписами + назва + країна `flag name_ua` через `useCountry`), плитки Номінал/Рік, Опис, AI-секція;
+`CoinCard` — іконки Ionicons, країна з довідника.
 Відповіді рендеряться як markdown (`MarkdownText`). Тап по фото монети → `photo` (fullScreenModal, pinch zoom). Поки одна відповідь без чату, сервер без авторизації.
-Наступне — чат з контекстом; на сервері — Bearer-токен.
+Адмінка (як у `numismat-web-app`, крок 12): `AuthProvider` (`onAuthStateChanged` → `useUser()`), третій таб `(tabs)/admin` —
+форма входу (`signInWithEmailAndPassword`) або меню (Додати монету / Додати країну / Вийти).
+`admin/coin?id=` — одна форма для створення і редагування (`saveCoin(id | null, values, photos)` у `src/lib/admin.ts`),
+фото — локальні URI → `fetch(uri).blob()` → `uploadBytes`; при редагуванні фото необовʼязкові, `info: deleteField()` якщо опис очищено.
+«✨ Заповнити з фото» — `describeCoinPhotos` (Gemini, `responseSchema` як у web) прямо з клієнта; якщо країни немає —
+кнопка → `admin/country` з чернеткою в params. Видалення: `Alert` → `deleteDoc` + `deleteObject` фото → `router.dismissAll()`.
+Після запису — `reload()` у `CoinsProvider` / `CountriesProvider`; «Список» перезапитує країну при зміні `coins`.
+Не перевірено на пристрої. Наступне — перевірка на S25 Ultra, чат з контекстом; на сервері — Bearer-токен.
 
 ## Журнал (що вивчено / зроблено)
 - Середовище: Node 24, npm 11, Watchman, Xcode встановлено.
@@ -168,7 +187,18 @@ logo — URL) → `askServer(id, …)` → `https://inua.tetiana-redko.com/chat`
  Zoom: `react-native-gesture-handler` + `react-native-reanimated` 4 (+ `react-native-worklets`), усе є в Expo Go,
  Babel-плагін налаштовує `babel-preset-expo`. Жести: `Pinch` (1–5×) + `Pan` (коли збільшено) + подвійний тап (скидання) — усі в `Gesture.Simultaneous`.
  `Gesture.Exclusive(doubleTap, …)` не брати: pinch чекає, поки Tap «провалиться» → зум лише після утримання пальців.
+ Тіні: `boxShadow: '0 2px 8px rgba(...)'` (RN 0.76+, New Architecture) — одна властивість замість
+ `shadow*` (iOS) + `elevation` (Android). Дитина `<Link asChild>` не приймає масив стилів → `{ ...card, ... }` у `StyleSheet.create`. На `expo-image` тінь не ставити — на обгортку (`Pressable`).
  `GestureHandlerRootView` — всередині самого модального екрана (нативні модалки поза кореневим деревом жестів).
+- Firebase Auth у RN: `initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })` (без цього сесія
+ лише в памʼяті). Metro бере RN-збірку `@firebase/auth` (умова `react-native`), а TypeScript — веб-типи (у `exports`
+ першою стоїть `types`) → `getReactNativePersistence` «не існує»; обхід — `paths` у `tsconfig.json` на `dist/rn/index.rn.d.ts`.
+ Web ↔ Expo: у Next — REST + httpOnly-cookie (SDK на сервері тримав би одного `currentUser` на всіх), у додатку — SDK,
+ бо користувач один; Firestore / Storage SDK самі додають токен.
+- `Stack.Protected guard={!!user}` (Expo Router): без входу `admin/*` недоступні, при виході — прибираються з історії.
+ Це лише UI — права на запис перевіряють Security Rules. `redirectTo` — лише з SDK 58.
+- `expo-image-picker` (є в Expo Go): `allowsEditing` + `aspect: [1, 1]` — системний кроп; дозволи камери — `requestCameraPermissionsAsync`,
+ тексти — у плагіні `app.json`. Фото в Gemini: `fetch(uri).blob()` → `FileReader.readAsDataURL` → base64 (і для `file://`, і для URL Storage).
 
 ---
 

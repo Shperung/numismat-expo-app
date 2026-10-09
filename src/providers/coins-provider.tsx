@@ -9,18 +9,26 @@ type CoinsState = {
   error: string | null;
 };
 
-const CoinsContext = createContext<CoinsState>({ coins: [], loading: true, error: null });
+const CoinsContext = createContext<CoinsState & { reload: () => Promise<void> }>({
+  coins: [],
+  loading: true,
+  error: null,
+  reload: async () => {},
+});
 
 export function CoinsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CoinsState>({ coins: [], loading: true, error: null });
 
-  useEffect(() => {
+  const reload = () =>
     fetchCollection('coins')
       .then((coins) => setState({ coins: coins as Coin[], loading: false, error: null }))
       .catch((e) => setState({ coins: [], loading: false, error: String(e) }));
+
+  useEffect(() => {
+    reload();
   }, []);
 
-  return <CoinsContext.Provider value={state}>{children}</CoinsContext.Provider>;
+  return <CoinsContext.Provider value={{ ...state, reload }}>{children}</CoinsContext.Provider>;
 }
 
 export const useCoins = () => useContext(CoinsContext);
